@@ -1,49 +1,27 @@
 # C2 Deterministic Simulation Engine
 
-A high-performance C++ core designed for **Command and Control (C2)** contexts. This project implements a deterministic, fixed-timestep simulation loop engineered for mission-critical stability, ensuring that physical state evolution remains consistent regardless of hardware performance or temporal jitter.
+A C++ implementation of a Command and Control (C2) simulation core. This project uses a fixed-timestep loop to ensure consistent state evolution across different hardware performance levels and frame rates.
 
-## 🛠 Technical Highlights
+## 🛠 Technical Implementation
 
-* **Fixed-Step Accumulation:** Implements the canonical "Fix Your Timestep" pattern. By decoupling real-time measurement from simulation logic (using a `timeAccumulator`), the system guarantees that physics and state updates occur in exact `10ms` quanta, ensuring predictable and testable behavior.
-* **Temporal Safety & Load Control:** Features a multi-layered defense against "Spiral of Death" scenarios. By utilizing `MAX_SIMULATION_STEPS_PER_FRAME` and `dt` clamping, the engine gracefully degrades under CPU stress rather than allowing latency to accumulate infinitely.
-* **State Interpolation:** Separates the **Simulation Layer** from the **Presentation Layer**. The engine calculates a fractional `alpha` to blend the previous and current states, providing jitter-free visual output while maintaining a strictly deterministic backend.
-* **Bounded Input Pressure:** Implements a command-queue pattern with a hard upper bound (`MAX_COMMAND_QUEUE_SIZE`). This protects the simulation from memory exhaustion and "command storms" often encountered in high-frequency sensor fusion or UI-heavy environments.
+* **Fixed-Step Accumulation:** Implements a `timeAccumulator` to decouple real-time measurement from simulation logic. Updates occur in constant `10ms` slices, ensuring deterministic behavior.
+* **Update Constraints:** Prevents execution lag (the "Spiral of Death") by using `MAX_SIMULATION_STEPS_PER_FRAME`. This clamps the number of updates per frame to maintain system responsiveness under CPU load.
+* **State Interpolation:** Implements a fractional `alpha` calculation to blend previous and current states, allowing for smooth visual or log output without mutating the deterministic backend.
+* **Command Queue Management:** Uses a bounded command queue (`MAX_COMMAND_QUEUE_SIZE`) to manage input pressure and prevent memory exhaustion during high-frequency data ingestion.
 
+## 📡 Logic & Reliability
 
+### 1. Temporal Handling
+* **Steady Clock:** Utilizes `std::chrono::steady_clock` for monotonic time measurement.
+* **Timestamp Precision:** Uses `int64_t` for millisecond tracking to prevent overflow during long-running execution.
 
-## 📡 Operational Features
-
-### 1. Temporal Integrity
-* **Monotonic Time Measurement:** Utilizes `std::chrono::steady_clock` to ensure time never flows backward, a critical requirement for causal ordering in tactical systems.
-* **Overflow-Safe Math:** Uses explicit `int64_t` widths for millisecond timestamps to prevent overflow errors in long-running deployments.
-
-### 2. Resilience & Reliability
-* **Graceful Degradation:** When the system cannot keep up with real-time demands, it prioritizes **Causality** and **CPU Survival** by dropping excess time, preventing the simulation from "exploding" or becoming unresponsive.
-* **Invalid State Protection:** Employs a `valid` flag logic; if physical constraints are violated (e.g., negative position), the system halts evolution for that entity to prevent error propagation.
+### 2. Error Handling
+* **Delta Clamping:** Excess time is dropped if the simulation cannot maintain real-time parity, prioritizing system stability over historical catch-up.
+* **State Validation:** Includes logic to halt entity evolution if physical constraints (e.g., coordinate bounds) are violated, preventing error propagation.
 
 ## 🏗 System Architecture
 
-The core is modularized into three distinct temporal layers of responsibility:
-* **Measurement Layer:** Interfaces with the OS to capture real passage of time (`nowMs`).
-* **Simulation Layer (Source of Truth):** Processes `CommandType` intents and evolves `SystemState` in fixed slices.
-* **Presentation Layer:** Interpolates data for display/logging without mutating the core simulation state.
-
-
-
-## 🚀 Getting Started
-
-### Prerequisites
-* C++17 compatible compiler (GCC, Clang, or MSVC)
-* Qt Creator (optional, `.pro` file provided)
-
-### Build & Run
-1. **Clone the repository:** `git clone https://github.com/sebastianvento/Deterministic-Real-Time-Simulation-Engine.git`
-2. Open `DeterministicReal-TimeSimulationEngine.pro` in Qt Creator.
-3. Ensure the build directory is configured correctly for console output.
-4. Build and run using: `qmake && make`
-
-### Build Environment
-* **Framework:** Pure C++ / Qt 6.x (for build tooling)
-* **OS:** macOS
-* **Compiler:** Apple Clang (C++17)
-* **Build Tool:** qmake / make
+The engine is divided into three functional layers:
+* **Measurement:** Interfaces with the system clock to capture real-time deltas.
+* **Simulation (Domain):** Processes `CommandType` inputs and evolves the `SystemState` in fixed intervals.
+* **Presentation:** Handles data output/logging and state interpolation for the user interface.

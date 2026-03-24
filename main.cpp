@@ -153,3 +153,5 @@ int main() {
 // Fixed step accumulation: canonical solution for engines and simulators.
 // Logic: Accumulate real time, consume in fixed slices.
 // Result: Simulation is stable, deterministic, and frame-rate independent.
+
+
